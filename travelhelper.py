@@ -1,6 +1,5 @@
+import os
 import sys
-import argparse
-import pathlib
 
 # https://stackoverflow.com/a/35904211
 this = sys.modules[__name__]
@@ -10,24 +9,76 @@ def main():
     """
      Main function where the magic happen!
     """
-    payload = parse_args()
 
-    validate_file(payload["file"])
+    validate_args()
+
+    option = sys.argv[1]
+
+    file = get_file(option)
+
+    read_file(file)
+
+    match option:
+        case '-a':
+            run_mode_a()
+        case '-o':
+            run_mode_o()
+        case '-d':
+            run_mode_d()
+        case '-v':
+            run_mode_v()
+        case _:
+            print(f"Unsupported option! '{option}'")
+            exit(1)
+    return
+
+def validate_args():
+    # less than 2 argument provided  index 0 = python file
+    if len(sys.argv) < 3:
+        print("A script must be executed with arguments travelhelper.py [-a | -o | -d | -v] argument_file.")
+        exit(1)
     
-    read_file(payload["file"])
-
-    if payload["mode"] == "a":
-        run_mode_a()
-
-    elif payload["mode"] == "v":
-        run_mode_v()
-
-    elif payload["mode"] == "o":
-        run_mode_o(payload["value"])
-
-    elif payload["mode"] == "d":
-        run_mode_d(payload["value"])
+    # argument requirement basd on option
+    option = sys.argv[1]
+    match option:
+        case "-v" | "-a":
+            # no need further validation the extra argument can be ignored
+            return
+        case "-d" | "-o":
+            if len(sys.argv) < 4:
+                print("Option '-o' | '-d' must follow by a city or distance")
+                exit(1)
+            return
+        case _:
+            print(f"Option '{option}' is not supported!")
     
+
+def get_file(option):
+    if option in ['-a','-v']:
+        file = sys.argv[2]
+        # validate file
+        validate_file(file)
+        return file
+    
+    if option in ['-o','-d']:
+        file = sys.argv[3]
+        # validate file
+        validate_file(file)
+        return file
+
+    print(f"Unsupported option! '{option}'")
+    exit(1)
+
+def validate_file(file):
+    if not file:
+        print("Missing an argument for a file!")
+        exit(1)
+    if not os.path.exists(file):
+        print(f"File '{file}' does not exist!") 
+        exit(1)
+    if not os.path.isfile(file):
+        print(f"File '{file}' is not a file!")
+        exit(1)
     return
 
 def run_mode_a():
@@ -45,7 +96,11 @@ def run_mode_v():
     print("StudentId: 25654120")
     print("Date of completion: xxx")
 
-def run_mode_o(origin_input):
+def run_mode_o():
+
+    # safe to assume position because option and file has been validated
+    origin_input = sys.argv[2]
+
     filteredRoutes = [r for r in this.routes if r["origin"] == origin_input]
     if len(filteredRoutes) == 0:
         print(f"No known destinations from {origin_input}")
@@ -56,65 +111,37 @@ def run_mode_o(origin_input):
         print(f"City: {route['destination']}")
         print(f"Distance: {route['distance']}")
 
-def run_mode_d(distance_input):
-    filteredRoutes = [r for r in this.routes if int(r["distance"]) <= distance_input]
+
+def run_mode_d():
+    distance_input = sys.argv[2]
+
+    try:
+        distance = int(distance_input)
+        if not isinstance(distance, int):
+            print(f"Distance {distance} is not integer")
+            exit(1)
+        if distance < 0:
+            print("Distance cannot be negative!")
+            exit(1)
+    except Exception as e:
+        print(f"Unable to parse distance {distance_input} into int, Error message: {e}")
+        exit(1)
+
+    filteredRoutes = [r for r in this.routes if int(r["distance"]) <= distance]
     if len(filteredRoutes) == 0:
-        print(f"No cities within {distance_input} Km")
+        print(f"No cities within {distance} Km")
         return
     
-    print(f"Cities within {distance_input} Km distance:")
+    print(f"Cities within {distance} Km distance:")
     for route in filteredRoutes:
         print(f"{route['origin']}-{route['destination']}")
         print(f"Distance: {route['distance']}")
 
-def parse_args():
-    """
-    Define arguments and parse
-    source: https://stackoverflow.com/a/30493366 , https://docs.python.org/3/library/argparse.html#type
-    """
-
-    # define helpful description of the script
-    parser = argparse.ArgumentParser(
-    description="A travel helper that helps inquiry about distance of cities.")
-
-    # Required positional argument
-    parser.add_argument('argument_file',type=pathlib.Path, help='a file that contains cities and distances data (required)')
-    # group options
-    group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument('-a',action="store_true", help='list all origin-destination cities')
-    group.add_argument('-o', metavar="city", nargs=1,help='list all the routes that has this given city as an origin')
-    group.add_argument('-d',metavar="distance", nargs=1,type=int,help='list all the routes that its distance is in between given distance')
-    group.add_argument('-v',action="store_true", help='display student information')
-
-    args = parser.parse_args()
-
-    mode=None
-    value=None
-    if args.a:
-        mode = "a"
-    elif args.v:
-        mode = "v"
-    elif args.o:
-        mode = "o"
-        value = args.o[0]
-    elif args.d:
-        mode = "d"
-        value = args.d[0]
-
-    return {"mode": mode,"value": value,"file": args.argument_file}
 
 
-def validate_file(_file):
-    if not _file.exists():
-        print(f"'{_file}' does not exist.")
-        exit(1)
-    if not _file.is_file():
-        print(f"'{_file}' is not a file.")
-        exit(1)
-
-def read_file(_file):
+def read_file(file):
     try:
-        with open(_file, 'r') as f:
+        with open(file, 'r') as f:
             for line in f:
                 # Remove leading/trailing whitespace
                 processed_line = line.strip() 
@@ -124,8 +151,7 @@ def read_file(_file):
                 this.routes.append(route)
                 # Your line processing logic here
     except Exception as e:
-        print(f"An error occurred while reading the file '{_file}': {e}")
-    
+        print(f"An error occurred while reading the file '{file}': {e}")
 
 if __name__ == "__main__":
     main()
