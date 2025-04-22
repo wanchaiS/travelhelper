@@ -94,7 +94,7 @@ def run_mode_v():
     print("Name: Wanchai")
     print("SurName: Sangkusolwong")
     print("StudentId: 25654120")
-    print("Date of completion: xxx")
+    print("Date of completion: 2025-04-22")
 
 def run_mode_o():
 
