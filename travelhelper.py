@@ -143,13 +143,12 @@ def read_file(file):
     try:
         with open(file, 'r') as f:
             for line in f:
-                # Remove leading/trailing whitespace
+                # remove leading/trailing whitespace
                 processed_line = line.strip() 
                 # construct an object of route
                 parts = processed_line.split(",")
                 route = {"origin":parts[0] , "destination":parts[1], "distance":parts[2]}
                 this.routes.append(route)
-                # Your line processing logic here
     except Exception as e:
         print(f"An error occurred while reading the file '{file}': {e}")
 
